@@ -67,15 +67,15 @@ def generate():
     industries = profile.get("employer_industries", {})
     if not isinstance(industries, dict):
         industries = {}
-    original_role = profile["experience"][0].get("role", profile["experience"][0].get("title", ""))
-    prompt = (PROMPT_FILE.read_text()
+    try:
+        original_role = profile["experience"][0].get("role", profile["experience"][0].get("title", ""))
+        prompt = (PROMPT_FILE.read_text()
         .replace("{original_resume}", json.dumps(profile))
         .replace("{original_role}", str(original_role))
         .replace("{jd_title}", title)
         .replace("{job_description}", jd[:8000])
         .replace("{keywords}", ", ".join(jd.split()[:35]))
         .replace("{employer_industries}", "; ".join(f"{k}: {v}" for k,v in industries.items()))) + KEY_CONTRACT
-    try:
         raw, note = _gemini(prompt)
         if not raw:
             return jsonify(error="Gemini did not return a response."), 502
