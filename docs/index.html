@@ -25,8 +25,6 @@
   button.secondary { background:#eef2ff; color:var(--blue); }
   button:disabled { opacity:.5; cursor:wait; }
   .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-  #gate { font-size:13px; line-height:1.5; }
-  #gate .miss { color:#b45309; }
   #status { font-size:13px; color:var(--mut); min-height:18px; }
   /* ---- resume preview (Jake's style) ---- */
   #resume { background:#fff; border:1px solid var(--line); border-radius:6px; padding:36px 44px; font-family:'Times New Roman',Times,serif; color:#111; }
@@ -48,7 +46,7 @@
   #resume .links a { color:var(--accent,#1a56db); }
   .empty { color:var(--mut); font-size:14px; text-align:center; padding:40px 10px; }
   @media print {
-    header, .controls, #gateCard, .noprint { display:none !important; }
+    header, .controls, .noprint { display:none !important; }
     main { display:block; padding:0; }
     #resume { border:0; border-radius:0; padding:10px 6px; }
     body { background:#fff; }
@@ -58,7 +56,7 @@
 <body>
 <header>
   <h1>Resume Pipeline</h1>
-  <p>Scraper finds the job &rarr; this page tailors your resume to it &rarr; you review &rarr; ready to apply.
+  <p>Scraper finds the job &rarr; this page tailors your resume to it &rarr; ready to apply.
   Everything runs <b>in your browser</b>: your profile and your API key never leave this page.
   Get a free Gemini key at <a href="https://aistudio.google.com" target="_blank" rel="noopener">Google AI Studio</a>.</p>
 </header>
@@ -130,10 +128,6 @@
     </div>
   </div>
   <div>
-    <div class="card" id="gateCard">
-      <h2>Review gate</h2>
-      <div id="gate"><span class="empty">Run the tailoring to see what was picked — and which JD keywords are NOT in your profile (they stay off your resume).</span></div>
-    </div>
     <div class="card">
       <div class="row noprint" style="margin:0 0 10px;">
         <button id="print" type="button">Print / Save as PDF</button>
@@ -403,12 +397,7 @@ $("run").addEventListener("click", async () => {
       note = "AI rewrite applied to the lead role's bullets (Gemini, your key).";
     }
     render(profile, t, tpl);
-    $("gate").innerHTML =
-      `<b>Resume title:</b> ${esc(t.title)}<br><b>Summary:</b> ${esc(t.summary)}<br>` +
-      `<b>Grounded JD keywords used:</b> ${Object.keys(t.gkw).slice(0, 20).join(", ") || "—"}<br>` +
-      (t.missing.length ? `<span class="miss"><b>JD asks for (NOT in your profile — kept off):</b> ${t.missing.join(", ")}</span><br>` : "") +
-      `<b>Stage:</b> ${note}`;
-    status.textContent = "Done. Review above, then Print / Save as PDF.";
+    status.textContent = "Done — your tailored resume is ready. Print / Save as PDF.";
   } catch (e) {
     status.textContent = "Error: " + e.message;
   } finally { btn.disabled = false; }

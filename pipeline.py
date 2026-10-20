@@ -29,27 +29,6 @@ from render import render  # noqa: E402
 HERE = Path(__file__).resolve().parent
 
 
-def review_gate(cfg, report, llm_pairs=None):
-    print("=" * 68)
-    print("REVIEW GATE — check before this resume goes anywhere")
-    print("=" * 68)
-    print(f"JD title:        {report['jd_title']}")
-    print(f"Resume title:    {report['resume_title']}")
-    print(f"Summary:         {cfg['summary']}")
-    print(f"Ally bullets:    {report['ally_picked']} picked, {report['ally_dropped']} left out")
-    print(f"Grounded JD keywords used: {', '.join(report['grounded_keywords'][:20])}")
-    missing = report["keywords_not_in_profile"]
-    if missing:
-        print(f"JD asks for (NOT in profile, kept OFF the resume): {', '.join(missing)}")
-    if llm_pairs:
-        print("-" * 68)
-        print("LLM REWRITES (original -> rewritten):")
-        for orig, new in llm_pairs:
-            print(f"  - {orig[:110]}")
-            print(f"  + {new[:110]}")
-    print("=" * 68)
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--profile", required=True)
@@ -98,7 +77,6 @@ def main():
     rules = load_rules(args.rules)
     cfg, report = tailor(profile, args.jd_title, jd_text, rules)
 
-    llm_pairs = None
     if args.llm != "none":
         orig = list(cfg["ally_bullets"])
         new, note = rewrite_bullets(orig, args.jd_title,
@@ -108,14 +86,6 @@ def main():
         print(f"[llm] {note}")
         if new != orig:
             cfg["ally_bullets"] = new
-            llm_pairs = list(zip(orig, new))
-    review_gate(cfg, report, llm_pairs)
-
-    if not args.yes:
-        ans = input("Export PDF? [y/N] ").strip().lower()
-        if ans != "y":
-            print("Stopped at the review gate. Nothing exported.")
-            return
 
     name = profile["name"].replace(" ", "_")
     out = args.out or str(HERE / "outputs" / f"{name}_Resume_{args.company.replace(' ', '')}.pdf")
