@@ -26,11 +26,11 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 
-BANNER_TEXT = "SYNTHETIC TEST RESUME — NOT FOR REAL-WORLD APPLICATIONS"
+BANNER_TEXT = "SYNTHETIC TEST RESUME"
 FOOTER_TEXT = "SYNTHETIC TEST DATA — NOT A REAL CANDIDATE RESUME"
 STRIP_BG = HexColor("#111827")
 
-s_banner = R.st("sb", fontName=R.SERIF_B, fontSize=10, leading=13,
+s_banner = R.st("sb", fontName=R.SERIF_B, fontSize=8, leading=10,
                 alignment=TA_CENTER, textColor=HexColor("#ffffff"))
 
 
@@ -44,8 +44,8 @@ def _banner_flowable():
     t = Table([[Paragraph(BANNER_TEXT, s_banner)]], colWidths=[R.PAGE_W])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), STRIP_BG),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
     ]))
@@ -206,7 +206,7 @@ def render_docx(data, out_path):
     bp = cell.paragraphs[0]
     bp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     br = bp.add_run(BANNER_TEXT)
-    br.bold = True; br.font.size = Pt(10)
+    br.bold = True; br.font.size = Pt(8)
     br.font.color.rgb = RGBColor(0xff, 0xff, 0xff)
     para("", size=4, space_after=2)
 
