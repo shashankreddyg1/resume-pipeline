@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Pipeline — Tailor your resume to any job</title>
+<style>
+  :root { --ink:#111827; --mut:#6b7280; --blue:#1a56db; --bg:#f6f7f9; --card:#fff; --line:#e5e7eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:#0b1220; color:#fff; padding:22px 20px; }
+  header h1 { margin:0; font-size:24px; letter-spacing:.3px; }
+  header p { margin:6px 0 0; color:#c7cede; font-size:14px; max-width:760px; }
+  header a { color:#93c5fd; }
+  main { display:grid; grid-template-columns: 420px 1fr; gap:16px; padding:16px; max-width:1400px; margin:0 auto; }
+  @media (max-width: 900px){ main{ grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:16px; }
+  .card h2 { font-size:15px; margin:0 0 8px; }
+  .card .hint { font-size:12px; color:var(--mut); margin:0 0 8px; }
+  textarea, input[type=text], input[type=password] { width:100%; border:1px solid var(--line); border-radius:8px; padding:8px; font-size:13px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  input[type=text], input[type=password] { font-family:inherit; margin-bottom:8px; }
+  textarea { resize:vertical; }
+  label { font-size:12px; font-weight:600; display:block; margin:8px 0 4px; }
+  button { background:var(--blue); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:14px; cursor:pointer; }
+  button.secondary { background:#eef2ff; color:var(--blue); }
+  button:disabled { opacity:.5; cursor:wait; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  #gate { font-size:13px; line-height:1.5; }
+  #gate .miss { color:#b45309; }
+  #status { font-size:13px; color:var(--mut); min-height:18px; }
+  /* ---- resume preview (Jake's style) ---- */
+  #resume { background:#fff; border:1px solid var(--line); border-radius:6px; padding:36px 44px; font-family:'Times New Roman',Times,serif; color:#111; }
+  #resume .rname { text-align:center; font-size:26px; font-weight:bold; }
+  #resume .rtitle { text-align:center; font-size:15px; font-weight:bold; margin-top:2px; }
+  #resume .rcontact { text-align:center; font-size:13px; color:#4b5563; margin:4px 0 10px; }
+  #resume .rcontact a { color:var(--blue); }
+  #resume h3 { font-size:15px; text-transform:uppercase; letter-spacing:.4px; border-bottom:1.5px solid #111; padding-bottom:2px; margin:14px 0 6px; }
+  #resume p, #resume li { font-size:13.5px; line-height:1.45; }
+  #resume ul { margin:4px 0 8px; padding-left:18px; }
+  #resume li { margin-bottom:3px; }
+  #resume .jobhead { display:flex; justify-content:space-between; font-size:14px; margin-top:8px; }
+  #resume .jobhead .co { font-weight:bold; }
+  #resume .jobhead .role { font-style:italic; }
+  #resume .skill { margin:2px 0; font-size:13.5px; }
+  #resume .proj { font-weight:bold; margin-top:8px; font-size:14px; }
+  #resume .links { font-size:12px; color:#4b5563; margin:1px 0 3px; }
+  #resume .links a { color:var(--blue); }
+  .empty { color:var(--mut); font-size:14px; text-align:center; padding:40px 10px; }
+  @media print {
+    header, .controls, #gateCard, .noprint { display:none !important; }
+    main { display:block; padding:0; }
+    #resume { border:0; border-radius:0; padding:10px 6px; }
+    body { background:#fff; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Resume Pipeline</h1>
+  <p>Scraper finds the job &rarr; this page tailors your resume to it &rarr; you review &rarr; ready to apply.
+  Everything runs <b>in your browser</b>: your profile and your API key never leave this page.
+  Get a free Gemini key at <a href="https://aistudio.google.com" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+</header>
+<main>
+  <div class="controls">
+    <div class="card">
+      <h2>1 · Your profile</h2>
+      <p class="hint">Your real facts as JSON (name, contact, experience bullets, projects, education). Stays in your browser.</p>
+      <textarea id="profile" rows="12" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="secondary" id="loadExample" type="button">Load example profile</button>
+      </div>
+      <label for="apikey">Gemini API key (optional — enables the AI rewrite)</label>
+      <input type="password" id="apikey" placeholder="AIza… (stored only in this browser)">
+    </div>
+    <div class="card">
+      <h2>2 · The job</h2>
+      <label for="jdtitle">Job title</label>
+      <input type="text" id="jdtitle" placeholder="e.g. Applied AI Demo Engineer">
+      <label for="jdtext">Job description</label>
+      <textarea id="jdtext" rows="10" placeholder="Paste the full job description here…" spellcheck="false"></textarea>
+    </div>
+    <div class="card">
+      <h2>3 · AI rewrite rules</h2>
+      <p class="hint">The exact contract the AI gets. Edit it if you like — the defaults never invent facts.</p>
+      <textarea id="prompt" rows="9" spellcheck="false"></textarea>
+      <div class="row">
+        <button id="run" type="button">Tailor my resume</button>
+      </div>
+      <p id="status"></p>
+    </div>
+  </div>
+  <div>
+    <div class="card" id="gateCard">
+      <h2>Review gate</h2>
+      <div id="gate"><span class="empty">Run the tailoring to see what was picked — and which JD keywords are NOT in your profile (they stay off your resume).</span></div>
+    </div>
+    <div class="card">
+      <div class="row noprint" style="margin:0 0 10px;">
+        <button id="print" type="button">Print / Save as PDF</button>
+      </div>
+      <div id="resume"><div class="empty">Your tailored resume will appear here.</div></div>
+    </div>
+  </div>
+</main>
+<script>
+"use strict";
+/* ================= rules (mirror of tailoring/rules.json) ================= */
+const LEXICON = ["python","typescript","javascript","sql","fastapi","node.js","express","react","next.js","angular","postgresql","pgvector","redis","mongodb","oracle","docker","kubernetes","aws","azure","gcp","ci/cd","github actions","rest api","graphql","microservices","llm","rag","embeddings","langchain","langgraph","openai","anthropic","gemini","prompt engineering","tool calling","function calling","agents","agentic","evals","evaluation","vector","retrieval","reranking","chunking","streaming","sse","oauth","jwt","rbac","security","testing","pytest","observability","monitoring","machine learning","scikit-learn","xgboost","nlp","prototyping","demo","integration","api","cloud","helm","pii","audit","etl","airflow","data modeling","warehouse","pipelines","tableau","pandas","spark","kafka","snowflake","dbt"];
+const TITLE_MAP = [["forward deploy","Forward Deployed Engineer"],["machine learning","AI Full Stack Engineer"],["data scien","AI Full Stack Engineer"],["llm","AI Full Stack Engineer"],["ai","AI Full Stack Engineer"],["backend","Backend Engineer"],["full-stack","Full Stack Engineer"],["full stack","Full Stack Engineer"],["data","Data Engineer"]];
+const SKILL_GROUPS = [
+ "<b>GenAI:</b> LLM APIs (Azure OpenAI, OpenAI, Anthropic), Prompt Engineering, Tool Calling, Structured Outputs, Agentic Workflows (LangChain, LangGraph)",
+ "<b>RAG:</b> Embeddings, pgvector, Hybrid Retrieval, Reranking, Chunking, Source Attribution, Citations",
+ "<b>Evals & Reliability:</b> Golden Datasets, Eval Harnesses, Groundedness, Graceful Fallbacks, Regression Testing",
+ "<b>Languages:</b> Python, TypeScript, JavaScript, SQL",
+ "<b>Backend:</b> FastAPI, Node.js, Express, REST APIs, Microservices, Async Execution",
+ "<b>Frontend:</b> React, Next.js, Angular",
+ "<b>Data:</b> PostgreSQL, Redis, MongoDB, Oracle",
+ "<b>Cloud/DevOps:</b> AWS, Azure, Docker, Kubernetes, GitHub Actions, CI/CD",
+ "<b>Security:</b> OAuth 2.0, JWT, RBAC, PII Redaction, Audit Logging"];
+const DEFAULT_PROMPT = `You are a resume editor. Rewrite each bullet below for the target role "{jd_title}".
+
+HARD RULES:
+- Use ONLY facts, tools, employers, and outcomes in the original bullet.
+- Keep every number and metric EXACTLY as written.
+- Never add skills, tools, projects, employers, dates, or results that are not in the original bullet.
+- Foreground these target keywords where they naturally fit: {keywords}
+- One bullet in, one bullet out. Similar length. Plain text, no markdown.
+
+BULLETS (JSON list):
+{bullets}
+
+Return ONLY a JSON list of the rewritten bullets, same order, same count.`;
+const EXAMPLE_PROFILE = {
+ "name": "Alex Carter",
+ "contact": {"location": "Austin, TX", "phone": "(555) 010-2233", "email": "alex.carter@example.com",
+             "github": "https://github.com/example", "portfolio": "https://example.com", "linkedin": null},
+ "experience": [
+   {"company": "Northwind Retail", "role": "Data Engineer", "dates": "Jan 2022 – Present", "location": "Austin, TX",
+    "bullets": [
+      "Build and maintain ETL pipelines in Python and Airflow moving sales and inventory data from POS systems into a PostgreSQL warehouse.",
+      "Wrote SQL transformations and data-quality checks covering 40+ nightly jobs; failures alert the on-call channel with run context.",
+      "Partnered with analysts to model star schemas for merchandising reports used by 200+ store managers.",
+      "Migrated legacy cron jobs to Airflow DAGs with retries and SLAs, cutting manual reruns."]},
+   {"company": "Brightpath Logistics", "role": "Junior Data Analyst", "dates": "Jun 2020 – Dec 2021", "location": "Dallas, TX",
+    "bullets": [
+      "Built Tableau dashboards tracking shipment exceptions across 12 regional hubs.",
+      "Cleaned and joined operational datasets in SQL and Python (pandas) for weekly KPI reporting."]}],
+ "projects": [
+   {"name": "Warehouse Sync Demo", "links": [["GitHub", "https://github.com/example/warehouse-sync"]],
+    "bullets": ["Small open-source demo: incremental sync from a CSV drop to Postgres with idempotent upserts and a pytest suite."]}],
+ "education": [
+   {"school": "Example State University", "degree": "B.S. Computer Science", "dates": "2016–2020"}]};
+
+/* ================= engine (port of tailoring/engine.py) ================= */
+const $ = id => document.getElementById(id);
+function kwHits(text){
+  const low = text.toLowerCase(); const hits = {};
+  for (const kw of LEXICON){ const n = low.split(kw).length - 1; if (n) hits[kw] = n; }
+  return hits;
+}
+function pickTitle(jdTitle){
+  const t = (jdTitle || "").toLowerCase();
+  for (const [pat, title] of TITLE_MAP){ if (t.includes(pat)) return title; }
+  return "Full Stack Engineer";
+}
+function select(bullets, gkw, n){
+  const scored = bullets.map((b, i) => {
+    const low = b.toLowerCase(); let s = 0;
+    for (const k in gkw){ if (low.includes(k)) s += gkw[k] * 2; }
+    return [s, i, b];
+  });
+  scored.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  return scored.slice(0, n).map(x => x[2]);
+}
+function tailor(profile, jdTitle, jdText){
+  const jdKw = kwHits(jdText);
+  const hay = JSON.stringify(profile).toLowerCase();
+  const gkw = {}; for (const k in jdKw){ if (hay.includes(k)) gkw[k] = jdKw[k]; }
+  const title = pickTitle(jdTitle);
+  const exps = profile.experience.map((e, idx) => ({
+    ...e, picked: select(e.bullets, gkw, idx === 0 ? 9 : 3)}));
+  const projects = (profile.projects || []).map(p => ({
+    name: p.name, links: p.links || [],
+    picked: select(p.bullets, gkw, 1),
+    score: p.bullets.reduce((s, b) => s + Object.keys(gkw).filter(k => b.toLowerCase().includes(k)).length, 0)
+  })).sort((a, b) => b.score - a.score);
+  const skills = [...SKILL_GROUPS].sort((a, b) =>
+    Object.keys(gkw).filter(k => b.toLowerCase().includes(k)).length -
+    Object.keys(gkw).filter(k => a.toLowerCase().includes(k)).length);
+  const topKw = Object.entries(gkw).sort((a, b) => b[1] - a[1])
+    .map(x => x[0]).filter(k => !["demo","sse","api","integration","prototyping"].includes(k)).slice(0, 4);
+  const focus = ["llm","rag","agentic","agents"].some(k => k in gkw) ? "LLM-powered products" : "production software systems";
+  const summary = `${title} with 3+ years of experience building ${focus}. Core strengths: ${topKw.join(", ") || "modern stacks"}.`;
+  return { title, summary, skills, exps, projects, gkw,
+           missing: Object.keys(jdKw).filter(k => !(k in gkw)) };
+}
+
+/* ================= AI rewrite (browser -> Gemini, user's own key) ================= */
+async function llmRewrite(bullets, jdTitle, keywords, key, tmpl){
+  const prompt = tmpl.replace("{jd_title}", jdTitle)
+                     .replace("{keywords}", keywords.slice(0, 12).join(", "))
+                     .replace("{bullets}", JSON.stringify(bullets, null, 1));
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(key)}`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
+  });
+  if (!res.ok) throw new Error("Gemini API " + res.status);
+  const data = await res.json();
+  let text = data.candidates[0].content.parts[0].text.trim()
+    .replace(/^```json/, "").replace(/^```/, "").replace(/```$/, "").trim();
+  const out = JSON.parse(text);
+  if (!Array.isArray(out) || out.length !== bullets.length) throw new Error("bad rewrite shape");
+  return out.map(String);
+}
+
+/* ================= render ================= */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function render(profile, t){
+  const c = profile.contact;
+  const links = [];
+  if (c.github) links.push(`<a href="${c.github}">GitHub</a>`);
+  if (c.portfolio) links.push(`<a href="${c.portfolio}">Portfolio</a>`);
+  links.push(c.linkedin ? `<a href="${c.linkedin}">LinkedIn</a>` : "LinkedIn");
+  let h = `<div class="rname">${esc(profile.name)}</div><div class="rtitle">${esc(t.title)}</div>`;
+  h += `<div class="rcontact">${esc(c.location)} | ${esc(c.phone)} | <a href="mailto:${c.email}">${esc(c.email)}</a><br>${links.join(" | ")}</div>`;
+  h += `<h3>Summary</h3><p>${esc(t.summary)}</p>`;
+  h += `<h3>Technical Skills</h3>` + t.skills.map(s => `<p class="skill">${s}</p>`).join("");
+  h += `<h3>Experience</h3>`;
+  for (const e of t.exps){
+    h += `<div class="jobhead"><span class="co">${esc(e.company)}</span><span>${esc(e.dates)}</span></div>`;
+    h += `<div class="jobhead"><span class="role">${esc(e.role)}</span><span>${esc(e.location)}</span></div>`;
+    h += `<ul>` + e.picked.map(b => `<li>${esc(b)}</li>`).join("") + `</ul>`;
+  }
+  h += `<h3>Selected Projects</h3>`;
+  for (const p of t.projects){
+    h += `<p class="proj">${esc(p.name)}</p>`;
+    if (p.links.length) h += `<p class="links">` + p.links.map(([l, u]) => `<a href="${u}">${esc(l)}</a>`).join(" | ") + `</p>`;
+    h += `<ul>` + p.picked.map(b => `<li>${esc(b)}</li>`).join("") + `</ul>`;
+  }
+  h += `<h3>Education</h3>` + profile.education.map(e =>
+    `<p><b>${esc(e.school)}</b> — ${esc(e.degree)}${e.dates ? ", " + esc(e.dates) : ""}</p>`).join("");
+  $("resume").innerHTML = h;
+}
+
+/* ================= wiring ================= */
+function loadExample(){
+  $("profile").value = JSON.stringify(EXAMPLE_PROFILE, null, 1);
+  localStorage.setItem("rp_profile", $("profile").value);
+}
+$("loadExample").addEventListener("click", loadExample);
+$("print").addEventListener("click", () => window.print());
+$("profile").addEventListener("change", () => localStorage.setItem("rp_profile", $("profile").value));
+$("apikey").addEventListener("change", () => localStorage.setItem("rp_key", $("apikey").value));
+$("run").addEventListener("click", async () => {
+  const status = $("status"); const btn = $("run");
+  try {
+    btn.disabled = true; status.textContent = "Tailoring…";
+    const profile = JSON.parse($("profile").value);
+    const jdTitle = $("jdtitle").value.trim();
+    const jdText = $("jdtext").value;
+    if (!jdText.trim()) throw new Error("Paste a job description first.");
+    let t = tailor(profile, jdTitle, jdText);
+    let note = "Deterministic tailoring (no AI key — selection only).";
+    const key = $("apikey").value.trim();
+    if (key) {
+      status.textContent = "AI is rewriting the top bullets…";
+      const orig = t.exps[0].picked;
+      const rewritten = await llmRewrite(orig, jdTitle, Object.keys(t.gkw), key, $("prompt").value);
+      t.exps[0].picked = rewritten;
+      note = "AI rewrite applied to the lead role's bullets (Gemini, your key).";
+    }
+    render(profile, t);
+    $("gate").innerHTML =
+      `<b>Resume title:</b> ${esc(t.title)}<br><b>Summary:</b> ${esc(t.summary)}<br>` +
+      `<b>Grounded JD keywords used:</b> ${Object.keys(t.gkw).slice(0, 20).join(", ") || "—"}<br>` +
+      (t.missing.length ? `<span class="miss"><b>JD asks for (NOT in your profile — kept off):</b> ${t.missing.join(", ")}</span><br>` : "") +
+      `<b>Stage:</b> ${note}`;
+    status.textContent = "Done. Review above, then Print / Save as PDF.";
+  } catch (e) {
+    status.textContent = "Error: " + e.message;
+  } finally { btn.disabled = false; }
+});
+/* init */
+$("prompt").value = DEFAULT_PROMPT;
+$("profile").value = localStorage.getItem("rp_profile") || "";
+if (!$("profile").value) loadExample();
+$("apikey").value = localStorage.getItem("rp_key") || "";
+</script>
+</body>
+</html>
