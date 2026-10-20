@@ -30,7 +30,7 @@ HTML = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewp
 <script>
 let token=null;const $=id=>document.getElementById(id);
 $('profile').value=JSON.stringify({name:"Alex Carter",contact:{location:"Austin, TX",phone:"(555) 010-2233",email:"alex.carter@example.com"},employer_industries:{"Northwind Retail":"Retail","Brightpath Logistics":"Logistics"},experience:[{company:"Northwind Retail",role:"Data Engineer",dates:"2022–Present",location:"Austin, TX",bullets:["Built retail inventory data pipelines using Python and SQL."]},{company:"Brightpath Logistics",role:"Junior Data Analyst",dates:"2020–2021",location:"Dallas, TX",bullets:["Built shipping dashboards and operational reports."]}],education:[{school:"Example State University",degree:"B.S. Computer Science",dates:"2020"}]},null,2);
-$('go').onclick=async()=>{token=null;$('exports').hidden=true;$('result').textContent='';$('go').disabled=true;$('status').textContent='Generating…';try{const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:JSON.parse($('profile').value),jd_title:$('title').value,jd_text:$('jd').value,fictional:$('fictional').checked})});const d=await r.json();if(!r.ok)throw Error(d.error||'Generation failed');token=d.download_token;$('result').textContent=JSON.stringify(d.resume,null,2);$('exports').hidden=false;$('status').textContent='Validated synthetic resume generated.'}catch(e){$('status').textContent=e.message}finally{$('go').disabled=false}};
+$('go').onclick=async()=>{token=null;$('exports').hidden=true;$('result').textContent='';$('go').disabled=true;$('status').textContent='Generating…';try{const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:JSON.parse($('profile').value),jd_title:$('title').value,jd_text:$('jd').value,fictional:$('fictional').checked})});const ct=r.headers.get('content-type')||'';if(!ct.includes('application/json')){const body=await r.text();throw Error('Server returned '+r.status+' '+(r.status===502||r.status===503||r.status===504?'(backend unavailable or timed out)':'(unexpected HTML response)')+'. Check Render logs.')}const d=await r.json();if(!r.ok)throw Error(d.error||'Generation failed');token=d.download_token;$('result').textContent=JSON.stringify(d.resume,null,2);$('exports').hidden=false;$('status').textContent='Validated synthetic resume generated.'}catch(e){$('status').textContent=e.message}finally{$('go').disabled=false}};
 async function download(fmt){if(!token)return;const r=await fetch('/api/download/'+fmt+'/'+encodeURIComponent(token));if(!r.ok){alert('Download expired or unavailable');return}const blob=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='synthetic-test-resume.'+fmt;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 </script></html>"""
 
@@ -67,15 +67,15 @@ def generate():
     industries = profile.get("employer_industries", {})
     if not isinstance(industries, dict):
         industries = {}
-    original_role = profile["experience"][0].get("role", profile["experience"][0].get("title", ""))
-    prompt = (PROMPT_FILE.read_text()
+    try:
+        original_role = profile["experience"][0].get("role", profile["experience"][0].get("title", ""))
+        prompt = (PROMPT_FILE.read_text()
         .replace("{original_resume}", json.dumps(profile))
         .replace("{original_role}", str(original_role))
         .replace("{jd_title}", title)
         .replace("{job_description}", jd[:8000])
         .replace("{keywords}", ", ".join(jd.split()[:35]))
         .replace("{employer_industries}", "; ".join(f"{k}: {v}" for k,v in industries.items()))) + KEY_CONTRACT
-    try:
         raw, note = _gemini(prompt)
         if not raw:
             return jsonify(error="Gemini did not return a response."), 502
