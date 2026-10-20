@@ -76,6 +76,12 @@
     </div>
     <div class="card">
       <h2>2 · The job</h2>
+      <label for="jdurl">Job link — Greenhouse, Lever, or Ashby (auto-fills everything)</label>
+      <div class="row" style="margin:0 0 4px;">
+        <input type="text" id="jdurl" placeholder="Paste the job posting link…" style="flex:1; margin:0;">
+        <button class="secondary" id="importJd" type="button">Import JD</button>
+      </div>
+      <p class="hint">…or paste the description manually below. Other sites block auto-fetch — the paste box always works.</p>
       <label for="jdtitle">Job title</label>
       <input type="text" id="jdtitle" placeholder="e.g. Applied AI Demo Engineer">
       <label for="jdtext">Job description</label>
@@ -319,6 +325,54 @@ function render(profile, t, tpl){
     `<p><b>${esc(e.school)}</b> — ${esc(e.degree)}${e.dates ? ", " + esc(e.dates) : ""}</p>`).join("");
   $("resume").innerHTML = h;
 }
+
+/* ================= JD import from a posting link ================= */
+function stripHtml(html){
+  const d = document.createElement("div");
+  d.innerHTML = html || "";
+  return (d.textContent || "").replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n\n").trim();
+}
+async function importFromUrl(url){
+  let m;
+  if ((m = url.match(/greenhouse\.io\/([^\/\?#]+)\/jobs\/(\d+)/))) {
+    const r = await fetch(`https://boards-api.greenhouse.io/v1/boards/${m[1]}/jobs/${m[2]}`);
+    if (!r.ok) throw new Error("Greenhouse API returned " + r.status);
+    const j = await r.json();
+    return { title: j.title || "", text: stripHtml(j.content || "") };
+  }
+  if ((m = url.match(/lever\.co\/([^\/\?#]+)\/([0-9a-f-]{36})/i))) {
+    const r = await fetch(`https://api.lever.co/v0/postings/${m[1]}/${m[2]}`);
+    if (!r.ok) throw new Error("Lever API returned " + r.status);
+    const j = await r.json();
+    const parts = [j.descriptionPlain || stripHtml(j.description || ""),
+      ...(j.lists || []).map(l => (l.text || "") + "\n" + (l.content || []).map(stripHtml).join("\n")),
+      j.additionalPlain || stripHtml(j.additional || "")].filter(s => s && s.trim());
+    return { title: j.text || "", text: parts.join("\n\n") };
+  }
+  if ((m = url.match(/ashbyhq\.com\/([^\/\?#]+)\/([0-9a-f-]{36})/i))) {
+    const r = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${m[1]}`);
+    if (!r.ok) throw new Error("Ashby API returned " + r.status);
+    const j = await r.json();
+    const job = (j.jobs || []).find(x => x.id === m[2] || (x.applyUrl || "").includes(m[2]) || (x.jobUrl || "").includes(m[2]));
+    if (!job) throw new Error("that job was not found on the Ashby board (it may have closed)");
+    return { title: job.title || "", text: stripHtml(job.descriptionHtml || "") };
+  }
+  throw new Error("link not recognized — auto-import works with Greenhouse, Lever, and Ashby posting links. For anything else, paste the JD text below.");
+}
+$("importJd").addEventListener("click", async () => {
+  const url = $("jdurl").value.trim(); const status = $("status");
+  if (!url) { status.textContent = "Paste a job link first."; return; }
+  status.textContent = "Fetching the job description…";
+  try {
+    const got = await importFromUrl(url);
+    if (!got.text) throw new Error("the posting came back empty");
+    if (got.title) $("jdtitle").value = got.title;
+    $("jdtext").value = got.text;
+    status.textContent = "JD imported from the link (" + got.text.length + " chars). Now hit “Tailor my resume”.";
+  } catch (e) {
+    status.textContent = "Import failed: " + e.message;
+  }
+});
 
 /* ================= wiring ================= */
 function loadExample(){
