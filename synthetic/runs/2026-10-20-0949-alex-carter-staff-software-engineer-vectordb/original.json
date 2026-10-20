@@ -1,0 +1,60 @@
+{
+ "contact": {
+  "email": "alex.carter@example.com",
+  "github": "https://github.com/example",
+  "linkedin": null,
+  "location": "Austin, TX",
+  "phone": "(555) 010-2233",
+  "portfolio": "https://example.com"
+ },
+ "education": [
+  {
+   "dates": "2016\u20132020",
+   "degree": "B.S. Computer Science",
+   "school": "Example State University"
+  }
+ ],
+ "experience": [
+  {
+   "bullets": [
+    "Build and maintain ETL pipelines in Python and Airflow moving sales and inventory data from POS systems into a PostgreSQL warehouse.",
+    "Wrote SQL transformations and data-quality checks covering 40+ nightly jobs; failures alert the on-call channel with run context.",
+    "Partnered with analysts to model star schemas for merchandising reports used by 200+ store managers.",
+    "Migrated legacy cron jobs to Airflow DAGs with retries and SLAs, cutting manual reruns."
+   ],
+   "company": "Northwind Retail",
+   "dates": "Jan 2022 \u2013 Present",
+   "location": "Austin, TX",
+   "role": "Data Engineer"
+  },
+  {
+   "bullets": [
+    "Built Tableau dashboards tracking shipment exceptions across 12 regional hubs.",
+    "Cleaned and joined operational datasets in SQL and Python (pandas) for weekly KPI reporting."
+   ],
+   "company": "Brightpath Logistics",
+   "dates": "Jun 2020 \u2013 Dec 2021",
+   "location": "Dallas, TX",
+   "role": "Junior Data Analyst"
+  }
+ ],
+ "name": "Alex Carter",
+ "projects": [
+  {
+   "bullets": [
+    "Small open-source demo: incremental sync from a CSV drop to Postgres with idempotent upserts and a pytest suite."
+   ],
+   "links": [
+    [
+     "GitHub",
+     "https://github.com/example/warehouse-sync"
+    ]
+   ],
+   "name": "Warehouse Sync Demo"
+  }
+ ],
+ "employer_industries": {
+  "Northwind Retail": "Retail / e-commerce",
+  "Brightpath Logistics": "Logistics / supply chain"
+ }
+}
