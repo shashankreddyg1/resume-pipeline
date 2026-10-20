@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+outputs/*.pdf
+profiles/*.json
+!profiles/example.json
+tailoring/*_custom.txt
+jd_*.txt
+demo_*.json
